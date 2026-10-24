@@ -1,0 +1,145 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Apartment Sound & Vocal Monitor v3.0.0-SPA</title>
+  <!-- Tailwind CSS CDN for zero-build preview / Cloudflare Pages deployment -->
+  <script src="https://cdn.tailwindcss.com"></script>
+</head>
+<body class="bg-slate-50 text-slate-800 font-sans antialiased min-h-screen">
+
+  <div class="max-w-6xl mx-auto p-4 md:p-6 space-y-4">
+
+    <!-- Top Header Bar with Pre-Light Annunciator & SemVer Branding -->
+    <header class="flex flex-col md:flex-row md:items-center justify-between pb-3 border-b border-slate-200 gap-3">
+      <div>
+        <h1 class="text-xl font-bold tracking-tight text-slate-900">Apartment Acoustic & Vocal Monitor</h1>
+        <p class="text-xs text-slate-500 font-mono">v3.0.0-SPA | IEC 61672 Class 2 & GDPR Client-Side Engine</p>
+      </div>
+
+      <!-- Annunciator Pre-light -->
+      <div class="flex items-center space-x-4 bg-white border border-slate-200 px-3 py-1.5 rounded-lg shadow-sm">
+        <div class="flex items-center space-x-2">
+          <span class="text-xs text-slate-500 font-medium">System Health:</span>
+          <span id="prelightBulb" class="w-3 h-3 rounded-full bg-blue-500 animate-pulse"></span>
+          <span id="prelightLabel" class="text-xs font-bold text-slate-700">PROBING</span>
+        </div>
+        <button id="btnExportRtb" class="text-xs font-semibold px-2.5 py-1 bg-blue-50 text-blue-600 rounded hover:bg-blue-100 transition">
+          Export RTB Dossier
+        </button>
+      </div>
+    </header>
+
+    <!-- Operational Controls Bar -->
+    <section class="grid grid-cols-1 md:grid-cols-4 gap-3 bg-white p-3.5 rounded-xl border border-slate-200 shadow-sm text-xs">
+      <div class="flex items-center">
+        <button id="btnToggle" class="w-full py-2 px-4 bg-blue-600 hover:bg-blue-700 text-white font-semibold rounded-lg shadow-sm transition">
+          Start Monitoring
+        </button>
+      </div>
+      <div>
+        <div class="flex justify-between mb-1">
+          <label class="text-slate-600 font-medium">Trigger Threshold</label>
+          <span id="valThreshold" class="font-bold text-blue-600">55.0 dBA</span>
+        </div>
+        <input id="sliderThreshold" type="range" min="35" max="85" step="0.5" value="55.0" class="w-full h-1 bg-slate-200 rounded-lg cursor-pointer">
+      </div>
+      <div>
+        <div class="flex justify-between mb-1">
+          <label class="text-slate-600 font-medium">SPL Mic Offset</label>
+          <span id="valOffset" class="font-bold text-blue-600">94.0 dB</span>
+        </div>
+        <input id="sliderOffset" type="range" min="60" max="120" step="1.0" value="94.0" class="w-full h-1 bg-slate-200 rounded-lg cursor-pointer">
+      </div>
+      <div class="flex items-center space-x-2 pt-2 md:pt-0">
+        <input id="chkSnapshots" type="checkbox" checked class="rounded text-blue-600 focus:ring-blue-500">
+        <label for="chkSnapshots" class="text-slate-600 font-medium">Save Redacted Snapshots (&lt;300Hz)</label>
+      </div>
+    </section>
+
+    <!-- 60-Second Real-Time Decibel Canvas Strip Chart -->
+    <section class="bg-white p-3.5 rounded-xl border border-slate-200 shadow-sm">
+      <div class="flex justify-between items-center mb-2">
+        <h2 class="text-xs font-bold uppercase tracking-wider text-slate-500">60-Second Decibel History (IEC 61672)</h2>
+        <div class="flex space-x-4 text-xs font-mono">
+          <span class="text-blue-600 font-semibold">• L_Aeq (dBA)</span>
+          <span class="text-red-600 font-semibold">• L_Ceq (dBC Bass)</span>
+          <span class="text-emerald-600 font-semibold">• L90 (Floor)</span>
+        </div>
+      </div>
+      <canvas id="stripChart" width="1020" height="150" class="w-full h-36 bg-slate-50 rounded-lg border border-slate-100"></canvas>
+    </section>
+
+    <!-- 3-Column Diagnostic Dashboard -->
+    <section class="grid grid-cols-1 md:grid-cols-3 gap-3">
+      <!-- 1. Physical Acoustics -->
+      <div class="bg-white p-3.5 rounded-xl border border-slate-200 shadow-sm space-y-2">
+        <h3 class="text-xs font-bold uppercase tracking-wider text-slate-500 border-b pb-1">1. Calibrated Acoustics</h3>
+        <div>
+          <div class="flex justify-between text-xs mb-1">
+            <span class="text-slate-500">Loudness Level:</span>
+            <span id="loudnessText" class="font-bold font-mono">0.0 dBA SPL</span>
+          </div>
+          <div class="w-full bg-slate-100 h-2.5 rounded-full overflow-hidden">
+            <div id="loudnessBar" class="bg-blue-600 h-2.5 rounded-full transition-all duration-100" style="width: 0%"></div>
+          </div>
+        </div>
+        <div class="text-xs space-y-1 pt-1 font-mono">
+          <div class="flex justify-between"><span class="text-slate-500">L_Ceq (Structural):</span><span id="txtDbc">--</span></div>
+          <div class="flex justify-between"><span class="text-slate-500">L90 Background:</span><span id="txtL90">--</span></div>
+          <div class="flex justify-between"><span class="text-slate-500">Transient Impact:</span><span id="txtTransient">No</span></div>
+        </div>
+      </div>
+
+      <!-- 2. Vocal Subsystem -->
+      <div class="bg-white p-3.5 rounded-xl border border-slate-200 shadow-sm space-y-2">
+        <h3 class="text-xs font-bold uppercase tracking-wider text-slate-500 border-b pb-1">2. 4-Tier Vocal Subsystem</h3>
+        <div class="text-xs space-y-2 font-mono pt-1">
+          <div class="flex justify-between"><span class="text-slate-500">Pitch (F0):</span><span id="txtPitch" class="font-bold">--</span></div>
+          <div class="flex justify-between"><span class="text-slate-500">Harmonic Ratio:</span><span id="txtHnr">--</span></div>
+          <div class="flex justify-between"><span class="text-slate-500">Through-Wall Voice:</span><span id="txtThroughWall" class="text-emerald-600 font-semibold">No</span></div>
+        </div>
+      </div>
+
+      <!-- 3. Incident Watchdog -->
+      <div class="bg-white p-3.5 rounded-xl border border-slate-200 shadow-sm space-y-2">
+        <h3 class="text-xs font-bold uppercase tracking-wider text-slate-500 border-b pb-1">3. Incident Watchdog</h3>
+        <div class="pt-2 text-center">
+          <span id="txtTriggerState" class="text-sm font-semibold text-emerald-600">[Ambient Quiet]</span>
+        </div>
+        <p class="text-[11px] text-slate-400 text-center">GDPR Telemetry Mode Active. Speech formants &gt;300Hz are destroyed before archival.</p>
+      </div>
+    </section>
+
+    <!-- Incident Log Table with Inline Audio Playback -->
+    <section class="bg-white rounded-xl border border-slate-200 shadow-sm overflow-hidden">
+      <div class="p-3 border-b border-slate-200 flex justify-between items-center">
+        <h3 class="text-xs font-bold uppercase tracking-wider text-slate-600">Incident Event Log (Irish RTB & EPA Standards)</h3>
+        <span class="text-xs text-slate-400">Retaining last 50 events</span>
+      </div>
+      <div class="overflow-x-auto max-h-64">
+        <table class="w-full text-left border-collapse">
+          <thead>
+            <tr class="bg-slate-50 text-[11px] font-semibold text-slate-500 border-b border-slate-200 uppercase tracking-wider">
+              <th class="p-2">Timestamp</th>
+              <th class="p-2">L_Aeq</th>
+              <th class="p-2">L_Ceq</th>
+              <th class="p-2">Event</th>
+              <th class="p-2">Domain</th>
+              <th class="p-2">Evidence Audio</th>
+              <th class="p-2">SHA-256 Fingerprint</th>
+            </tr>
+          </thead>
+          <tbody id="incidentTableBody">
+            <!-- Dynamically populated rows -->
+          </tbody>
+        </table>
+      </div>
+    </section>
+
+  </div>
+
+  <script type="module" src="/src/app.js"></script>
+</body>
+</html>

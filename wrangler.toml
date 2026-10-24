@@ -1,0 +1,7 @@
+name = "flat-sound-monitor-web"
+compatibility_date = "2026-10-01"
+pages_build_output_dir = "dist"
+
+[vars]
+ENVIRONMENT = "production"
+APP_VERSION = "3.0.0-SPA"
